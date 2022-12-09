@@ -1,12 +1,12 @@
 #include <Adafruit_PM25AQI.h>
-#include <SimpleDHT.h>
+#include <DHT.h>
 #include <IRremote.h>
 #include <LiquidCrystal_I2C.h>
 #include "ISD1820.h"
 
 // object pin
 #define PM25_PIN 0
-#define DHT_PIN 1
+#define DHT_PIN 2
 #define MQ9_A_PIN 2
 #define MQ9_D_PIN 3
 #define RECV_PIN 4
@@ -16,18 +16,31 @@
 #define LCD_PIN 8
 #define LED_PIN 9
 
-// remote control decode
-#define REPORT_ALL 0
-#define REPORT_PM25 1
-#define REPORT_DHT 2
-#define REPORT_GAS 3
+// remote control buttons
+#define BTN_1 16753245
+#define BTN_2 16736925
+#define BTN_3 16769565
+#define BTN_4 16720605
+#define BTN_5 16712445
+#define BTN_6 16761405
+#define BTN_7 16769055
+#define BTN_8 16754775
+#define BTN_9 16748655
+#define BTN_0 16750695
+#define BTN_STAR    16738455
+#define BTN_HASHTAG 16756815
+#define BTN_OK      16726215
+#define BTN_UP      16718055
+#define BTN_RIGHT   16734885
+#define BTN_DOWN    16730805
+#define BTN_LEFT    16716015
 
 // PM25 init
 Adafruit_PM25AQI aqi;
 PM25_AQI_Data data;
 
 // DHT11 init
-SimpleDHT11 dht(DHT_PIN);
+DHT dht = DHT(DHT_PIN, DHT22);
 
 // MQ9 init
 
@@ -43,7 +56,7 @@ LiquidCrystal_I2C LCD(0x27, 16, 2);
 
 namespace test {
   void pm25();
-  void dht11();
+  void dht22();
   void mq9();
   void isd1820();
   void lcd();
@@ -54,8 +67,9 @@ void print(int code);
 
 // module initial part
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
+  dht.begin();
   LCD.init();
   LCD.backlight();
   irrecv.enableIRIn();
@@ -64,49 +78,40 @@ void setup() {
 // main loop
 void loop() {
   if (irrecv.decode(&result)) {
-    Serial.print(result.value, HEX);
-    LCD.print(result.value);
-    delay(3000);
-    LCD.clear();
-    LCD.home();
+    Serial.print(result.value);
+    
+    switch(result.value){
+      case BTN_1: test::pm25(); break;
+      case BTN_2: test::dht22(); break;
+      case BTN_3: test::mq9(); break;
+      case BTN_4: break;
+      case BTN_5: break;
+      case BTN_6: break;
+      case BTN_7: break;
+      case BTN_8: break;
+      case BTN_9: break;
+      case BTN_0: break;
+      case BTN_STAR: break;
+      case BTN_HASHTAG: break;
+      case BTN_UP: break;
+      case BTN_RIGHT: break;
+      case BTN_DOWN: break;
+      case BTN_LEFT: break;    
+      case BTN_OK: LCD.clear(); break;
+      default: break;
+    }
+    
+    delay(100);
     irrecv.resume();
   }
 }
 
 void report(int code){
-  switch(code){
-    case REPORT_ALL:
-        break;
-
-    case REPORT_PM25:
-      break;
-
-    case REPORT_DHT:
-      break;
-
-    case REPORT_GAS:
-      break;
-
-    default: break;
-  }
+  
 }
 
 void print(int code){
-  switch(code){
-    case REPORT_ALL:
-        break;
-
-    case REPORT_PM25:
-      break;
-
-    case REPORT_DHT:
-      break;
-
-    case REPORT_GAS:
-      break;
-
-    default: break;
-  }
+  
 }
 
 namespace test {
@@ -138,18 +143,54 @@ namespace test {
     Serial.print(F("Particles > 10 um / 0.1L air:")); Serial.println(data.particles_100um);
     Serial.println(F("---------------------------------------"));
   }
-  void dht11(){
-    byte temperature = 0;
-    byte humidity = 0;
-    int err = SimpleDHTErrSuccess;
+  void dht22(){
+    // Read the humidity in %:
+    float h = dht.readHumidity();
+    
+    // Read the temperature as Celsius:
+    float t = dht.readTemperature();
+    
+    // Read the temperature as Fahrenheit:
+    float f = dht.readTemperature(true);
+  
+    // Check if any reads failed and exit early (to try again):
+    if (isnan(h) || isnan(t) || isnan(f)) {
+      Serial.println("Failed to read from DHT sensor!");
+      return;
+    }
+  
+    // Compute heat index in Fahrenheit (default):
+    float hif = dht.computeHeatIndex(f, h);
+    // Compute heat index in Celsius:
+    float hic = dht.computeHeatIndex(t, h, false);
+  
+    Serial.print("Humidity: ");
+    Serial.print(h);
+    Serial.print(" % ");
+    Serial.print("Temperature: ");
+    Serial.print(t);
+    Serial.print(" \xC2\xB0");
+    Serial.print("C | ");
+    Serial.print(f);
+    Serial.print(" \xC2\xB0");
+    Serial.print("F ");
+    Serial.print("Heat index: ");
+    Serial.print(hic);
+    Serial.print(" \xC2\xB0");
+    Serial.print("C | ");
+    Serial.print(hif);
+    Serial.print(" \xC2\xB0");
+    Serial.println("F");
 
-    if((err = dht.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) return;
-
-    Serial.println("========================================");
-    Serial.println("Sample DHT11...");
-    Serial.print("Sample OK: ");
-    Serial.print(static_cast<int>(temperature)); Serial.print(" *C, ");
-    Serial.print(static_cast<int>(humidity)); Serial.println(" H");
+    LCD.clear();
+    LCD.home();
+    
+    LCD.print("T: ");
+    LCD.print(t);
+    LCD.setCursor(0, 1);
+    LCD.print("H: ");
+    LCD.print(h);
+    
   }
   void mq9(){
     int mqBite=0;
