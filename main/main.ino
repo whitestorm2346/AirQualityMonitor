@@ -2,9 +2,9 @@
 #include <DHT.h>
 #include <IRremote.h>
 #include <LiquidCrystal_I2C.h>
-#include "ISD1820.h"
+//#include "DFPlayer_mini.h"
 
-// object pin
+// module pin
 #define PM25_PIN 0
 #define DHT_PIN 2
 #define MQ9_A_PIN 2
@@ -16,7 +16,7 @@
 #define LCD_PIN 8
 #define LED_PIN 9
 
-// remote control buttons
+// remote control button pin
 #define BTN_1 16753245
 #define BTN_2 16736925
 #define BTN_3 16769565
@@ -35,37 +35,48 @@
 #define BTN_DOWN    16730805
 #define BTN_LEFT    16716015
 
-// PM25 init
+// program state pin
+#define IDLE 0
+
+
+// modules set up
 Adafruit_PM25AQI aqi;
 PM25_AQI_Data data;
 
-// DHT11 init
 DHT dht = DHT(DHT_PIN, DHT22);
 
-// MQ9 init
-
-// IRremote init
 IRrecv irrecv(RECV_PIN);
 decode_results result;
 
-// ISD1820 init
-ISD1820 isd(ISD_REC_PIN, ISD_PLAY_E_PIN, ISD_PLAY_L_PIN);
-
-// IC_LCD init
 LiquidCrystal_I2C LCD(0x27, 16, 2);
+
+// state init 
+int state = IDLE;
+
+namespace print {
+  void pm25();
+  void dht22();
+  void mq9();
+}
+
+namespace report {
+  void pm25();
+  void dht22();
+  void mq9();
+}
 
 namespace test {
   void pm25();
   void dht22();
   void mq9();
-  void isd1820();
   void lcd();
+  void dfplayer();
 }
 
 void report(int code);
 void print(int code);
 
-// module initial part
+// modules initial 
 void setup() {
   Serial.begin(9600);
 
@@ -106,12 +117,28 @@ void loop() {
   }
 }
 
-void report(int code){
-  
+namespace print {
+  void pm25(){
+
+  }
+  void dht22(){
+
+  }
+  void mq9(){
+
+  }
 }
 
-void print(int code){
-  
+namespace report {
+  void pm25(){
+
+  }
+  void dht22(){
+
+  }
+  void mq9(){
+    
+  }
 }
 
 namespace test {
@@ -205,16 +232,14 @@ namespace test {
     if(mqBite == 1) Serial.println("CO 濃度正常!");
     else Serial.println("CO 濃度超標!");
   }
-  void isd1820(){
-    isd.playSignal();
-    isd.record(3000);              
-    isd.playSignal_L (1000);
-  }
   void lcd(){
     LCD.clear();
     LCD.home();
     LCD.print("Hello World");
     LCD.setCursor(0, 1);
     LCD.print("TEST LCD");
+  }
+  void dfplayer(){
+
   }
 }
