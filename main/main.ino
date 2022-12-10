@@ -1,20 +1,15 @@
-#include <Adafruit_PM25AQI.h>
 #include <DHT.h>
 #include <IRremote.h>
 #include <LiquidCrystal_I2C.h>
 //#include "DFPlayer_mini.h"
 
 // module pin
-#define PM25_PIN 0
-#define DHT_PIN 2
-#define MQ9_A_PIN 2
-#define MQ9_D_PIN 3
-#define RECV_PIN 4
-#define ISD_REC_PIN 5
-#define ISD_PLAY_E_PIN 6
-#define ISD_PLAY_L_PIN 7
-#define LCD_PIN 8
-#define LED_PIN 9
+#define PM25_PIN A0
+#define PM25_LED_PIN 2
+#define DHT_PIN 12
+#define MQ9_A_PIN A1
+#define MQ9_D_PIN 8
+#define RECV_PIN 13
 
 // remote control button pin
 #define BTN_1 16753245
@@ -38,47 +33,40 @@
 // program state pin
 #define IDLE 0
 
-
 // modules set up
-Adafruit_PM25AQI aqi;
-PM25_AQI_Data data;
+int samplingTime = 280; //the starting time of  LED is 280μs
+int deltaTime = 40; //the whole pulse is 320μs. So we have to wait for 40μs
+int sleepTime = 9680;
 
 DHT dht = DHT(DHT_PIN, DHT22);
-
 IRrecv irrecv(RECV_PIN);
 decode_results result;
-
 LiquidCrystal_I2C LCD(0x27, 16, 2);
 
 // state init 
 int state = IDLE;
 
+// functions declaration
 namespace print {
   void pm25();
   void dht22();
   void mq9();
 }
-
 namespace report {
   void pm25();
   void dht22();
   void mq9();
 }
-
 namespace test {
-  void pm25();
-  void dht22();
-  void mq9();
-  void lcd();
   void dfplayer();
 }
 
-void report(int code);
-void print(int code);
-
 // modules initial 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
+
+  pinMode(PM25_LED_PIN, OUTPUT);
+  pinMode(MQ9_D_PIN, INPUT); 
 
   dht.begin();
   LCD.init();
@@ -89,13 +77,13 @@ void setup() {
 // main loop
 void loop() {
   if (irrecv.decode(&result)) {
-    Serial.print(result.value);
+    Serial.println(result.value);
     
     switch(result.value){
-      case BTN_1: test::pm25(); break;
-      case BTN_2: test::dht22(); break;
-      case BTN_3: test::mq9(); break;
-      case BTN_4: break;
+      case BTN_1: print::pm25(); break;
+      case BTN_2: print::dht22(); break;
+      case BTN_3: print::mq9(); break;
+      case BTN_4: test::dfplayer(); break;
       case BTN_5: break;
       case BTN_6: break;
       case BTN_7: break;
@@ -119,13 +107,57 @@ void loop() {
 
 namespace print {
   void pm25(){
+    digitalWrite(PM25_LED_PIN, LOW); 
+    delayMicroseconds(samplingTime); 
+    
+    float voMeasured = analogRead(PM25_PIN); 
 
+    delayMicroseconds(deltaTime);
+    digitalWrite(PM25_LED_PIN, HIGH); 
+    delayMicroseconds(sleepTime);
+
+    float calcVoltage = voMeasured * (5.0 / 1024.0);
+    float dustDensity = 0.17 * calcVoltage - 0.1;
+
+    LCD.home();
+    LCD.clear();
+
+    LCD.print("Dust Density: ");
+    LCD.setCursor(0, 1);
+    LCD.print(dustDensity);
   }
   void dht22(){
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
 
+    LCD.home();
+    LCD.clear();
+
+    LCD.print("T: ");
+    LCD.print(t);
+    LCD.print("*C");
+    LCD.setCursor(0, 1);
+    LCD.print("H: ");
+    LCD.print(h);
+    LCD.print("%");
   }
   void mq9(){
+    float sensorValue = static_cast<float>(analogRead(MQ9_A_PIN)); 
+    float sensor_volt = sensorValue / 1024 * 5.0;
+    float RS_gas = (5.0 - sensor_volt) / sensor_volt;
+    float R0 = 1.97;  // R0 in 1000 ppm LPG 
+    float ratio = RS_gas / R0;
 
+    LCD.home();
+    LCD.clear();
+
+    LCD.print("Ratio: ");
+    LCD.print(ratio);
+
+    if(ratio < 1.5){
+      LCD.setCursor(0, 1);
+      LCD.print("Warning!");
+    }
   }
 }
 
@@ -137,109 +169,12 @@ namespace report {
 
   }
   void mq9(){
-    
+
   }
 }
 
 namespace test {
-  void pm25(){
-    if(!aqi.read(&data)){
-      Serial.println("Could not read from AQI");
-      delay(500);  // try again in a bit!
-      return;
-    }
-
-    Serial.println("AQI reading success\n");
-    Serial.println(F("---------------------------------------"));
-    Serial.println(F("Concentration Units (standard)"));
-    Serial.println(F("---------------------------------------"));
-    Serial.print(F("PM 1.0: ")); Serial.print(data.pm10_standard);
-    Serial.print(F("\t\tPM 2.5: ")); Serial.print(data.pm25_standard);
-    Serial.print(F("\t\tPM 10: ")); Serial.println(data.pm100_standard);
-    Serial.println(F("Concentration Units (environmental)"));
-    Serial.println(F("---------------------------------------"));
-    Serial.print(F("PM 1.0: ")); Serial.print(data.pm10_env);
-    Serial.print(F("\t\tPM 2.5: ")); Serial.print(data.pm25_env);
-    Serial.print(F("\t\tPM 10: ")); Serial.println(data.pm100_env);
-    Serial.println(F("---------------------------------------"));
-    Serial.print(F("Particles > 0.3um / 0.1L air:")); Serial.println(data.particles_03um);
-    Serial.print(F("Particles > 0.5um / 0.1L air:")); Serial.println(data.particles_05um);
-    Serial.print(F("Particles > 1.0um / 0.1L air:")); Serial.println(data.particles_10um);
-    Serial.print(F("Particles > 2.5um / 0.1L air:")); Serial.println(data.particles_25um);
-    Serial.print(F("Particles > 5.0um / 0.1L air:")); Serial.println(data.particles_50um);
-    Serial.print(F("Particles > 10 um / 0.1L air:")); Serial.println(data.particles_100um);
-    Serial.println(F("---------------------------------------"));
-  }
-  void dht22(){
-    // Read the humidity in %:
-    float h = dht.readHumidity();
-    
-    // Read the temperature as Celsius:
-    float t = dht.readTemperature();
-    
-    // Read the temperature as Fahrenheit:
-    float f = dht.readTemperature(true);
-  
-    // Check if any reads failed and exit early (to try again):
-    if (isnan(h) || isnan(t) || isnan(f)) {
-      Serial.println("Failed to read from DHT sensor!");
-      return;
-    }
-  
-    // Compute heat index in Fahrenheit (default):
-    float hif = dht.computeHeatIndex(f, h);
-    // Compute heat index in Celsius:
-    float hic = dht.computeHeatIndex(t, h, false);
-  
-    Serial.print("Humidity: ");
-    Serial.print(h);
-    Serial.print(" % ");
-    Serial.print("Temperature: ");
-    Serial.print(t);
-    Serial.print(" \xC2\xB0");
-    Serial.print("C | ");
-    Serial.print(f);
-    Serial.print(" \xC2\xB0");
-    Serial.print("F ");
-    Serial.print("Heat index: ");
-    Serial.print(hic);
-    Serial.print(" \xC2\xB0");
-    Serial.print("C | ");
-    Serial.print(hif);
-    Serial.print(" \xC2\xB0");
-    Serial.println("F");
-
-    LCD.clear();
-    LCD.home();
-    
-    LCD.print("T: ");
-    LCD.print(t);
-    LCD.setCursor(0, 1);
-    LCD.print("H: ");
-    LCD.print(h);
-    
-  }
-  void mq9(){
-    int mqBite=0;
-    int mqVal=0;
-    float mqVot=0;
-
-    mqVal = analogRead(MQ9_A_PIN);
-    mqVot = mqVal * 0.0049;
-    Serial.println(mqVot);
-    mqBite = digitalRead(MQ9_D_PIN);
-
-    if(mqBite == 1) Serial.println("CO 濃度正常!");
-    else Serial.println("CO 濃度超標!");
-  }
-  void lcd(){
-    LCD.clear();
-    LCD.home();
-    LCD.print("Hello World");
-    LCD.setCursor(0, 1);
-    LCD.print("TEST LCD");
-  }
   void dfplayer(){
-
+    
   }
 }
