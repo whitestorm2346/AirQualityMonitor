@@ -1,6 +1,8 @@
 #include <DHT.h>
 #include <IRremote.h>
 #include <LiquidCrystal_I2C.h>
+#include "GP2Y1010AU0F.h"
+#include "mq9.h"
 //#include "DFPlayer_mini.h"
 
 // module pin
@@ -38,7 +40,8 @@ int samplingTime = 280; //the starting time of  LED is 280μs
 int deltaTime = 40; //the whole pulse is 320μs. So we have to wait for 40μs
 int sleepTime = 9680;
 
-DHT dht = DHT(DHT_PIN, DHT22);
+GP2Y1010AU0F GP2Y1010AU0F(PM25_LED_PIN, PM25_PIN);
+DHT dht(DHT_PIN, DHT22);
 IRrecv irrecv(RECV_PIN);
 decode_results result;
 LiquidCrystal_I2C LCD(0x27, 16, 2);
@@ -63,7 +66,7 @@ namespace test {
 
 // modules initial 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   pinMode(PM25_LED_PIN, OUTPUT);
   pinMode(MQ9_D_PIN, INPUT); 
