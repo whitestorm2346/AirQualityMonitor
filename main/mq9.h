@@ -1,7 +1,7 @@
-#ifndef mq9_LIBRARY_H
-#define mq9_LIBRARY_H
+#ifndef MQ9_LIBRARY_H
+#define MQ9_LIBRARY_H
 #include "Arduino.h"
-class mq9 {
+class MQ9 {
 public:
 
 
@@ -9,8 +9,8 @@ public:
     void *inits();
     void *calibrate();
     double *getValue(bool printing,char gasName, double *output);
-    bool thrValue(char gasName,int threshold);
-    bool thrNvalue(int threshold);
+    bool thrValue(char gasName,float threshold);
+    bool thrNvalue(float threshold);
 private:
     int readADC(int pin);
     void printData(float data);

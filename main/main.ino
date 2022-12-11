@@ -2,7 +2,7 @@
 #include <IRremote.h>
 #include <LiquidCrystal_I2C.h>
 #include "GP2Y1010AU0F.h"
-#include "mq9.h"
+#include "MQ9.h"
 //#include "DFPlayer_mini.h"
 
 // module pin
@@ -40,8 +40,9 @@ int samplingTime = 280; //the starting time of  LED is 280μs
 int deltaTime = 40; //the whole pulse is 320μs. So we have to wait for 40μs
 int sleepTime = 9680;
 
-GP2Y1010AU0F GP2Y1010AU0F(PM25_LED_PIN, PM25_PIN);
+GP2Y1010AU0F pm25(PM25_LED_PIN, PM25_PIN);
 DHT dht(DHT_PIN, DHT22);
+MQ9 mq9;
 IRrecv irrecv(RECV_PIN);
 decode_results result;
 LiquidCrystal_I2C LCD(0x27, 16, 2);
@@ -68,12 +69,14 @@ namespace test {
 void setup() {
   Serial.begin(9600);
 
-  pinMode(PM25_LED_PIN, OUTPUT);
-  pinMode(MQ9_D_PIN, INPUT); 
+  mq9.inits();
+  mq9.calibrate();
 
   dht.begin();
+
   LCD.init();
   LCD.backlight();
+
   irrecv.enableIRIn();
 }
 
@@ -110,24 +113,27 @@ void loop() {
 
 namespace print {
   void pm25(){
-    digitalWrite(PM25_LED_PIN, LOW); 
-    delayMicroseconds(samplingTime); 
+    double outputV = ::pm25.getOutputV(); //採樣獲取輸出電壓
+    double ugm3 = ::pm25.getDustDensity(outputV); //計算灰塵濃度
+    double aqi = ::pm25.getAQI(ugm3); //計算aqi
+    int gradeInfo = ::pm25.getGradeInfo(aqi); //計算級別
     
-    float voMeasured = analogRead(PM25_PIN); 
-
-    delayMicroseconds(deltaTime);
-    digitalWrite(PM25_LED_PIN, HIGH); 
-    delayMicroseconds(sleepTime);
-
-    float calcVoltage = voMeasured * (5.0 / 1024.0);
-    float dustDensity = 0.17 * calcVoltage - 0.1;
-
     LCD.home();
     LCD.clear();
 
-    LCD.print("Dust Density: ");
+    LCD.print("Density: ");
+    LCD.print(ugm3);
     LCD.setCursor(0, 1);
-    LCD.print(dustDensity);
+
+    switch(gradeInfo){
+      case GRADE_PERFECT: LCD.print("PERFECT"); break;
+      case GRADE_GOOD: LCD.print("GOOD"); break;
+      case GRADE_POLLUTED_MILD: LCD.print("POLLUTED MILD"); break;
+      case GRADE_POLLUTED_MEDIUM: LCD.print("POLLUTED MEDIUM"); break;
+      case GRADE_POLLUTED_HEAVY: LCD.print("POLLUTED HEAVY"); break;
+      case GRADE_POLLUTED_SEVERE: LCD.print("POLLUTED SEVERE"); break;
+      default: break;
+    }
   }
   void dht22(){
     float h = dht.readHumidity();
@@ -145,19 +151,17 @@ namespace print {
     LCD.print("%");
   }
   void mq9(){
-    float sensorValue = static_cast<float>(analogRead(MQ9_A_PIN)); 
-    float sensor_volt = sensorValue / 1024 * 5.0;
-    float RS_gas = (5.0 - sensor_volt) / sensor_volt;
-    float R0 = 1.97;  // R0 in 1000 ppm LPG 
-    float ratio = RS_gas / R0;
+    double data[3]; // CO LPG CH4
+
+    ::mq9.getValue(false, 'A', data);
 
     LCD.home();
     LCD.clear();
 
-    LCD.print("Ratio: ");
-    LCD.print(ratio);
+    LCD.print("CO: ");
+    LCD.print(data[0]);
 
-    if(ratio < 1.5){
+    if(::mq9.thrValue('L',0.001)){
       LCD.setCursor(0, 1);
       LCD.print("Warning!");
     }
