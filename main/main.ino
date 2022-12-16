@@ -90,18 +90,6 @@ void loop() {
       case BTN_2: print::dht22(); break;
       case BTN_3: print::mq9(); break;
       case BTN_4: test::dfplayer(); break;
-      case BTN_5: break;
-      case BTN_6: break;
-      case BTN_7: break;
-      case BTN_8: break;
-      case BTN_9: break;
-      case BTN_0: break;
-      case BTN_STAR: break;
-      case BTN_HASHTAG: break;
-      case BTN_UP: break;
-      case BTN_RIGHT: break;
-      case BTN_DOWN: break;
-      case BTN_LEFT: break;    
       case BTN_OK: LCD.clear(); break;
       default: break;
     }
@@ -121,7 +109,7 @@ namespace print {
     LCD.home();
     LCD.clear();
 
-    LCD.print("Density: ");
+    LCD.print("Dust D: ");
     LCD.print(ugm3);
     LCD.setCursor(0, 1);
 
@@ -153,7 +141,7 @@ namespace print {
   void mq9(){
     double data[3]; // CO LPG CH4
 
-    ::mq9.getValue(false, 'A', data);
+    ::mq9.getValue(false, 'C', data);
 
     LCD.home();
     LCD.clear();
@@ -161,7 +149,7 @@ namespace print {
     LCD.print("CO: ");
     LCD.print(data[0]);
 
-    if(::mq9.thrValue('L',0.001)){
+    if(::mq9.thrValue('C', 35.f)){
       LCD.setCursor(0, 1);
       LCD.print("Warning!");
     }
