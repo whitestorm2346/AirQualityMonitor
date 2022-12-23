@@ -3,7 +3,6 @@
 #include <LiquidCrystal_I2C.h>
 #include "GP2Y1010AU0F.h"
 #include "MQ9.h"
-//#include "DFPlayer_mini.h"
 
 // module pin
 #define PM25_PIN A0
@@ -33,13 +32,12 @@
 #define BTN_LEFT    16716015
 
 // program state pin
-#define IDLE 0
+#define IDLE  0
+#define PM25  1
+#define DHT22 2
+#define MQ9   3
 
 // modules set up
-int samplingTime = 280; //the starting time of  LED is 280μs
-int deltaTime = 40; //the whole pulse is 320μs. So we have to wait for 40μs
-int sleepTime = 9680;
-
 GP2Y1010AU0F pm25(PM25_LED_PIN, PM25_PIN);
 DHT dht(DHT_PIN, DHT22);
 MQ9 mq9;
@@ -55,14 +53,6 @@ namespace print {
   void pm25();
   void dht22();
   void mq9();
-}
-namespace report {
-  void pm25();
-  void dht22();
-  void mq9();
-}
-namespace test {
-  void dfplayer();
 }
 
 // modules initial 
@@ -83,15 +73,16 @@ void setup() {
 // main loop
 void loop() {
   if (irrecv.decode(&result)) {
-    Serial.println(result.value);
-    
-    switch(result.value){
-      case BTN_1: print::pm25(); break;
-      case BTN_2: print::dht22(); break;
-      case BTN_3: print::mq9(); break;
-      case BTN_4: test::dfplayer(); break;
-      case BTN_OK: LCD.clear(); break;
-      default: break;
+    // Serial.println(result.value);
+
+    if(state == IDLE){
+      switch(result.value){
+        case BTN_1: print::pm25(); state = PM25; break;      
+        case BTN_2: print::dht22(); break;  
+        case BTN_3: print::mq9(); break;     
+        case BTN_OK: LCD.clear(); break;   
+        default: break;
+      }
     }
     
     delay(100);
@@ -148,28 +139,11 @@ namespace print {
 
     LCD.print("CO: ");
     LCD.print(data[0]);
+    LCD.print("ppm");
 
     if(::mq9.thrValue('C', 35.f)){
       LCD.setCursor(0, 1);
       LCD.print("Warning!");
     }
-  }
-}
-
-namespace report {
-  void pm25(){
-
-  }
-  void dht22(){
-
-  }
-  void mq9(){
-
-  }
-}
-
-namespace test {
-  void dfplayer(){
-    
   }
 }
