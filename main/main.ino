@@ -161,7 +161,7 @@ namespace print {
     LCD.print("CO: ");
     LCD.print(data[0]);
 
-    if(::mq9.thrValue('L',0.001)){
+    if(::mq9.thrValue('L', 0.001)){
       LCD.setCursor(0, 1);
       LCD.print("Warning!");
     }
