@@ -45,8 +45,9 @@ IRrecv irrecv(RECV_PIN);
 decode_results result;
 LiquidCrystal_I2C LCD(0x27, 16, 2);
 
-// state init 
+// global variables init 
 int state = IDLE;
+int page = 0;
 
 // functions declaration
 namespace print {
@@ -78,11 +79,46 @@ void loop() {
     if(state == IDLE){
       switch(result.value){
         case BTN_1: print::pm25(); state = PM25; break;      
-        case BTN_2: print::dht22(); break;  
-        case BTN_3: print::mq9(); break;     
-        case BTN_OK: LCD.clear(); break;   
+        case BTN_2: print::dht22(); state = DHT22; break;  
+        case BTN_3: print::mq9(); state = MQ9; break;     
+        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
         default: break;
       }
+    }
+    else if(state == PM25){
+      switch(result.value){
+        case BTN_RIGHT: page = (++page) % 2; print::pm25(); break;      
+        case BTN_LEFT: page = ((--page) < 0) ? 1 : 0; print::pm25(); break;    
+        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        default: break;
+      }
+    }
+    else if(state == DHT22){
+      switch(result.value){
+        case BTN_RIGHT: page = (++page) % 2; print::dht22(); break;      
+        case BTN_LEFT: page = ((--page) < 0) ? 1 : 0; print::dht22(); break;    
+        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        default: break;
+      }
+    }
+    else if(state == MQ9){
+      switch(result.value){
+        case BTN_RIGHT: page = (++page) % 3; print::mq9(); break;      
+        case BTN_LEFT: page = ((--page) < 0) ? 2 : 0; print::mq9(); break;    
+        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        default: break;
+      }
+    }
+    else{
+      LCD.println("STATE ERROR");
+      LCD.println("RESET STATE...");
+
+      delay(3000);
+
+      LCD.clear();
+
+      state = IDLE;
+      page = 0;
     }
     
     delay(100);
@@ -100,50 +136,71 @@ namespace print {
     LCD.home();
     LCD.clear();
 
-    LCD.print("Dust D: ");
-    LCD.print(ugm3);
-    LCD.setCursor(0, 1);
+    if(page == 0){
+      LCD.println("Grade Info:");
 
-    switch(gradeInfo){
-      case GRADE_PERFECT: LCD.print("PERFECT"); break;
-      case GRADE_GOOD: LCD.print("GOOD"); break;
-      case GRADE_POLLUTED_MILD: LCD.print("POLLUTED MILD"); break;
-      case GRADE_POLLUTED_MEDIUM: LCD.print("POLLUTED MEDIUM"); break;
-      case GRADE_POLLUTED_HEAVY: LCD.print("POLLUTED HEAVY"); break;
-      case GRADE_POLLUTED_SEVERE: LCD.print("POLLUTED SEVERE"); break;
-      default: break;
+      switch(gradeInfo){
+        case GRADE_PERFECT: LCD.print("PERFECT"); break;
+        case GRADE_GOOD: LCD.print("GOOD"); break;
+        case GRADE_POLLUTED_MILD: LCD.print("POLLUTED MILD"); break;
+        case GRADE_POLLUTED_MEDIUM: LCD.print("POLLUTED MEDIUM"); break;
+        case GRADE_POLLUTED_HEAVY: LCD.print("POLLUTED HEAVY"); break;
+        case GRADE_POLLUTED_SEVERE: LCD.print("POLLUTED SEVERE"); break;
+        default: break;
+      }
+    }
+    else if(page == 1){
+      LCD.println("Dust Density:");
+      LCD.print(ugm3);
     }
   }
   void dht22(){
-    float h = dht.readHumidity();
-    float t = dht.readTemperature();
-
     LCD.home();
     LCD.clear();
 
-    LCD.print("T: ");
-    LCD.print(t);
-    LCD.print("*C");
-    LCD.setCursor(0, 1);
-    LCD.print("H: ");
-    LCD.print(h);
-    LCD.print("%");
+    if(page == 0){
+      float h = dht.readHumidity();
+
+      LCD.println("Humidity:");
+      LCD.print(h);
+      LCD.print("%");
+    }
+    else if(page == 1){
+      float t = dht.readTemperature();
+
+      LCD.println("Temperature:");
+      LCD.print(t);
+      LCD.print("*C");
+    }
   }
   void mq9(){
     double data[3]; // CO LPG CH4
 
-    ::mq9.getValue(false, 'C', data);
+    ::mq9.getValue(false, 'A', data);
 
     LCD.home();
     LCD.clear();
 
-    LCD.print("CO: ");
-    LCD.print(data[0]);
-    LCD.print("ppm");
+    if(page == 0){
+      LCD.print("CO: ");
+      LCD.print(data[0]);
+      LCD.println("ppm");
 
-    if(::mq9.thrValue('C', 35.f)){
-      LCD.setCursor(0, 1);
-      LCD.print("Warning!");
+      if(::mq9.thrValue('C', 9.f)) LCD.print("Warning!");
+    }
+    else if(page == 1){
+      LCD.print("LPG: ");
+      LCD.print(data[1]);
+      LCD.println("ppm");
+
+      if(::mq9.thrValue('L', 500.f)) LCD.print("Warning!");
+    }
+    else if(page == 2){
+      LCD.print("CH4: ");
+      LCD.print(data[2]);
+      LCD.println("ppm");
+
+      if(::mq9.thrValue('H', 100000.f)) LCD.print("Warning!");
     }
   }
 }
