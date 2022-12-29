@@ -32,10 +32,10 @@
 #define BTN_LEFT    16716015
 
 // program state pin
-#define IDLE  0
-#define PM25  1
-#define DHT22 2
-#define MQ9   3
+#define IDLE_STATE  0
+#define PM25_STATE  1
+#define DHT22_STATE 2
+#define MQ9_STATE   3
 
 // modules set up
 GP2Y1010AU0F pm25(PM25_LED_PIN, PM25_PIN);
@@ -46,7 +46,7 @@ decode_results result;
 LiquidCrystal_I2C LCD(0x27, 16, 2);
 
 // global variables init 
-int state = IDLE;
+int state = IDLE_STATE;
 int page = 0;
 
 // functions declaration
@@ -76,48 +76,49 @@ void loop() {
   if (irrecv.decode(&result)) {
     // Serial.println(result.value);
 
-    if(state == IDLE){
+    if(state == IDLE_STATE){
       switch(result.value){
-        case BTN_1: print::pm25(); state = PM25; break;      
-        case BTN_2: print::dht22(); state = DHT22; break;  
-        case BTN_3: print::mq9(); state = MQ9; break;     
-        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        case BTN_1: print::pm25(); state = PM25_STATE; break;      
+        case BTN_2: print::dht22(); state = DHT22_STATE; break;  
+        case BTN_3: print::mq9(); state = MQ9_STATE; break;     
+        case BTN_OK: LCD.clear(); state = IDLE_STATE, page = 0; break;   
         default: break;
       }
     }
-    else if(state == PM25){
+    else if(state == PM25_STATE){
       switch(result.value){
         case BTN_RIGHT: page = (++page) % 2; print::pm25(); break;      
         case BTN_LEFT: page = ((--page) < 0) ? 1 : 0; print::pm25(); break;    
-        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        case BTN_OK: LCD.clear(); state = IDLE_STATE, page = 0; break;   
         default: break;
       }
     }
-    else if(state == DHT22){
+    else if(state == DHT22_STATE){
       switch(result.value){
         case BTN_RIGHT: page = (++page) % 2; print::dht22(); break;      
         case BTN_LEFT: page = ((--page) < 0) ? 1 : 0; print::dht22(); break;    
-        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        case BTN_OK: LCD.clear(); state = IDLE_STATE, page = 0; break;   
         default: break;
       }
     }
-    else if(state == MQ9){
+    else if(state == MQ9_STATE){
       switch(result.value){
         case BTN_RIGHT: page = (++page) % 3; print::mq9(); break;      
         case BTN_LEFT: page = ((--page) < 0) ? 2 : 0; print::mq9(); break;    
-        case BTN_OK: LCD.clear(); state = IDLE, page = 0; break;   
+        case BTN_OK: LCD.clear(); state = IDLE_STATE, page = 0; break;   
         default: break;
       }
     }
     else{
-      LCD.println("STATE ERROR");
-      LCD.println("RESET STATE...");
+      LCD.print("STATE ERROR");
+      LCD.setCursor(0, 1);
+      LCD.print("RESET STATE...");
 
       delay(3000);
 
       LCD.clear();
 
-      state = IDLE;
+      state = IDLE_STATE;
       page = 0;
     }
     
@@ -137,7 +138,8 @@ namespace print {
     LCD.clear();
 
     if(page == 0){
-      LCD.println("Grade Info:");
+      LCD.print("Grade Info:");
+      LCD.setCursor(0, 1);
 
       switch(gradeInfo){
         case GRADE_PERFECT: LCD.print("PERFECT"); break;
@@ -150,7 +152,8 @@ namespace print {
       }
     }
     else if(page == 1){
-      LCD.println("Dust Density:");
+      LCD.print("Dust Density:");
+      LCD.setCursor(0, 1);
       LCD.print(ugm3);
     }
   }
@@ -161,14 +164,16 @@ namespace print {
     if(page == 0){
       float h = dht.readHumidity();
 
-      LCD.println("Humidity:");
+      LCD.print("Humidity:");
+      LCD.setCursor(0, 1);
       LCD.print(h);
       LCD.print("%");
     }
     else if(page == 1){
       float t = dht.readTemperature();
 
-      LCD.println("Temperature:");
+      LCD.print("Temperature:");
+      LCD.setCursor(0, 1);
       LCD.print(t);
       LCD.print("*C");
     }
@@ -184,21 +189,24 @@ namespace print {
     if(page == 0){
       LCD.print("CO: ");
       LCD.print(data[0]);
-      LCD.println("ppm");
+      LCD.print("ppm");
+      LCD.setCursor(0, 1);
 
       if(::mq9.thrValue('C', 9.f)) LCD.print("Warning!");
     }
     else if(page == 1){
       LCD.print("LPG: ");
       LCD.print(data[1]);
-      LCD.println("ppm");
+      LCD.print("ppm");
+      LCD.setCursor(0, 1);
 
       if(::mq9.thrValue('L', 500.f)) LCD.print("Warning!");
     }
     else if(page == 2){
       LCD.print("CH4: ");
       LCD.print(data[2]);
-      LCD.println("ppm");
+      LCD.print("ppm");
+      LCD.setCursor(0, 1);
 
       if(::mq9.thrValue('H', 100000.f)) LCD.print("Warning!");
     }
